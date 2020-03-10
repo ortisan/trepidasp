@@ -1,16 +1,16 @@
 package br.com.jsonthegroup.trepidasp.ui.home;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,15 +18,12 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
 
-import org.w3c.dom.Text;
-
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
 
 import br.com.jsonthegroup.trepidasp.R;
 
@@ -49,12 +46,15 @@ public class HomeFragment extends Fragment implements SensorEventListener {
     private Boolean bom = false;
     private Boolean ruim = false;
 
-    private File reportGiroscopio;
-    private File reportAcelerometro;
+    private OutputStreamWriter reportGiroscopio;
+    private OutputStreamWriter reportAcelerometro;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && getContext().checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1000);
+        }
 
         homeViewModel = ViewModelProviders.of(this).get(HomeViewModel.class);
         View root = inflater.inflate(R.layout.fragment_home, container, false);
@@ -105,6 +105,8 @@ public class HomeFragment extends Fragment implements SensorEventListener {
 
     @Override
     public void onResume() {
+
+
         super.onResume();
 //        if (ActivityCompat.checkSelfPermission(this.getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this.getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 //            throw new SecurityException("Faltou permissão de gps");
@@ -126,31 +128,52 @@ public class HomeFragment extends Fragment implements SensorEventListener {
                 SensorManager.SENSOR_DELAY_GAME);
     }
 
+    private void startFiles(String tipo) {
+
+
+        try {
+            File folderMyApp = new File(Environment.getExternalStorageDirectory() + "/" + "TrepidaSp/");
+            if (!folderMyApp.exists()) {
+                folderMyApp.mkdirs();
+            }
+            long currentTime = System.currentTimeMillis();
+
+            String acelerometroFileName = String.format("acelerometro_%s_%d.log", tipo, currentTime);
+            File acelerometroFile = new File(folderMyApp, acelerometroFileName);
+            acelerometroFile.createNewFile();
+            reportAcelerometro = new OutputStreamWriter(new FileOutputStream(acelerometroFile));
+
+            String giroscopioFileName = String.format("giroscopio_%s_%d.log", tipo, currentTime);
+            File giroscopioFile = new File(folderMyApp, giroscopioFileName);
+            giroscopioFile.createNewFile();
+            reportGiroscopio = new OutputStreamWriter(new FileOutputStream(giroscopioFile));
+
+        } catch (Exception exc) {
+            throw new RuntimeException("Erro ao gravar o arquivo");
+        }
+    }
+
     public void doClickBom(View view) {
-        long currentTime = System.currentTimeMillis();
-
-        String acelerometroFileName = String.format("acelerometro_%s_%d.log", "BOM", currentTime);
-        reportAcelerometro = new File(this.getContext().getFilesDir(), acelerometroFileName);
-
-//        String giroscopioFileName = String.format("giroscopio_%s_%d.log", "BOM", currentTime);
-//        reportGiroscopio = new File(this.getContext().getFilesDir(), giroscopioFileName);
-
+        doClickParar(view);
+        startFiles("BOM");
         doStartListener();
     }
 
     public void doClickRuim(View view) {
-        long currentTime = System.currentTimeMillis();
-
-        String acelerometroFileName = String.format("acelerometro_%s_%d.log", "RUIM", currentTime);
-        reportAcelerometro = new File(this.getContext().getFilesDir(), acelerometroFileName);
-
-//        String giroscopioFileName = String.format("giroscopio_%s_%d.log", "RUIM", currentTime);
-//        reportGiroscopio = new File(this.getContext().getFilesDir(), giroscopioFileName);
-
+        doClickParar(view);
+        startFiles("RUIM");
         doStartListener();
     }
 
     public void doClickParar(View view) {
+        try {
+            if (reportAcelerometro != null) {
+                reportAcelerometro.close();
+                reportGiroscopio.close();
+            }
+        } catch (Exception exc) {
+            throw new RuntimeException("Erro ao fechar os arquivos");
+        }
         sensorManager.unregisterListener(this);
     }
 
@@ -166,9 +189,21 @@ public class HomeFragment extends Fragment implements SensorEventListener {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             String valoresAcelerometro = String.format("X=%.4f;Y=%.4f;Z=%.4f;latitude=%.4f;longitude=%.4f;timestamp=%d;", event.values[0], event.values[1], event.values[2], latitude, longitude, System.currentTimeMillis());
             this.textAcelerometro2.setText(valoresAcelerometro);
+            try {
+                reportAcelerometro.write(String.format("%s\n", valoresAcelerometro));
+            } catch (Exception exc) {
+                throw new RuntimeException("Erro");
+            }
+
         } else {
             String valoresGiroscopio = String.format("X=%.4f;Y=%.4f;Z=%.4f;latitude=%.4f;longitude=%.4f;timestamp=%d;", event.values[0], event.values[1], event.values[2], latitude, longitude, System.currentTimeMillis());
             this.textGiroscopio2.setText(valoresGiroscopio);
+
+            try {
+                reportGiroscopio.write(String.format("%s\n", valoresGiroscopio));
+            } catch (Exception exc) {
+                throw new RuntimeException("Erro");
+            }
         }
     }
 
