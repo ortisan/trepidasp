@@ -32,5 +32,28 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Parar" />
+
+        <TextView
+            android:id="@+id/text_acelerometro"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Acelerômetro" />
+
+        <TextView
+            android:id="@+id/text_acelerometro2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/text_giroscopio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Giroscópio" />
+
+        <TextView
+            android:id="@+id/text_giroscopio2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
