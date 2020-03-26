@@ -233,8 +233,6 @@ public class HomeFragment extends Fragment implements SensorEventListener {
 
     }
 
-
-
     private void getLastLocation(){
         if(checkPermissions()){
             if(isLocationEnabled()){
